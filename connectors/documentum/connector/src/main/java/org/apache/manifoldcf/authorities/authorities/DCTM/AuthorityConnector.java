@@ -21,6 +21,7 @@ package org.apache.manifoldcf.authorities.authorities.DCTM;
 import org.apache.log4j.*;
 import org.apache.manifoldcf.core.interfaces.*;
 import org.apache.manifoldcf.agents.interfaces.*;
+import org.apache.manifoldcf.authorities.authorities.DCTM.AuthorityConnector.AuthorizationResponseDescription;
 import org.apache.manifoldcf.authorities.interfaces.*;
 import org.apache.manifoldcf.connectorcommon.interfaces.*;
 import org.apache.manifoldcf.authorities.system.Logging;
@@ -41,6 +42,7 @@ public class AuthorityConnector extends org.apache.manifoldcf.authorities.author
   public static final String CONFIG_PARAM_DOMAIN = "domain";
   public static final String CONFIG_PARAM_CASEINSENSITIVE = "usernamecaseinsensitive";
   public static final String CONFIG_PARAM_USESYSTEMACLS = "usesystemacls";
+  public static final String CONFIG_PARAM_USEREVIEWACLS = "usereviewacls";
   public static final String CONFIG_PARAM_CACHELIFETIME = "cachelifetimemins";
   public static final String CONFIG_PARAM_CACHELRUSIZE = "cachelrusize";
   
@@ -50,6 +52,7 @@ public class AuthorityConnector extends org.apache.manifoldcf.authorities.author
   protected String domain = null;
   protected boolean caseInsensitive = false;
   protected boolean useSystemAcls = true;
+  protected boolean useReviewAcls = true;
 
   // Documentum has no "deny" tokens, and its document acls cannot be empty, so no local authority deny token is required.
   // However, it is felt that we need to be suspenders-and-belt, so we use the deny token.
@@ -179,6 +182,11 @@ public class AuthorityConnector extends org.apache.manifoldcf.authorities.author
       {
         Logging.authorityConnectors.debug("DCTM: Use system acls enabled");
       }
+      
+      if (useReviewAcls)
+		{
+			Logging.authorityConnectors.debug("DCTM: Use review acls enabled");
+		}
 
       hasSessionParameters = true;
     }
@@ -643,7 +651,7 @@ public class AuthorityConnector extends org.apache.manifoldcf.authorities.author
     
     // Construct a cache description object
     ICacheDescription objectDescription = new AuthorizationResponseDescription(strUserNamePassedIn,docbaseName,userName,password,
-      domain,caseInsensitive,useSystemAcls,responseLifetime,LRUsize);
+			domain,caseInsensitive,useSystemAcls,useReviewAcls,responseLifetime,LRUsize);
     
     // Enter the cache
     ICacheHandle ch = cacheManager.enterCache(new ICacheDescription[]{objectDescription},null,null);
@@ -744,14 +752,18 @@ public class AuthorityConnector extends org.apache.manifoldcf.authorities.author
       // U.user_state=0)";
       String strDQL = "SELECT DISTINCT A.owner_name, A.object_name FROM dm_acl A " + " WHERE ";
       if (!useSystemAcls)
-        strDQL += "A.object_name NOT LIKE 'dm_%' AND (";
+			strDQL += "A.object_name NOT LIKE 'dm_%' AND ";
+		if (!useReviewAcls)
+			strDQL += "A.object_name NOT LIKE '%-reviewer%' AND A.object_name NOT LIKE '%-leader%' AND object_name NOT LIKE '%-approver%' AND object_name NOT LIKE '%-summary%' AND ";
+		if ((!useSystemAcls) || (!useSystemAcls))
+			strDQL += "(";
       strDQL += "(any (A.r_accessor_name IN ('" + strAccessToken + "', 'dm_world') AND r_accessor_permit>2) "
       + " OR (any (A.r_accessor_name='dm_owner' AND A.r_accessor_permit>2) AND A.owner_name=" + quoteDQLString(strAccessToken) + ")"
       + " OR (ANY (A.r_accessor_name in (SELECT G.group_name FROM dm_group G WHERE ANY G.i_all_users_names = " + quoteDQLString(strAccessToken) + ")"
       + " AND r_accessor_permit>2))"
       + ")";
-      if (!useSystemAcls)
-        strDQL += ")";
+      if ((!useSystemAcls) || (!useSystemAcls))
+			strDQL += ")";
 
       if (Logging.authorityConnectors.isDebugEnabled())
         Logging.authorityConnectors.debug("DCTM: About to execute query= (" + strDQL + ")");
@@ -927,6 +939,14 @@ public class AuthorityConnector extends org.apache.manifoldcf.authorities.author
     }
     else
       useSystemAcls = false;
+    
+    String strUseReviewAcls = configParams.getParameter(CONFIG_PARAM_USEREVIEWACLS);
+	if (strUseReviewAcls == null || strUseReviewAcls.equals("true"))
+	{
+		useReviewAcls = true;
+	}
+	else
+		useReviewAcls = false;
 
     cacheLifetime = configParams.getParameter(CONFIG_PARAM_CACHELIFETIME);
     if (cacheLifetime == null)
@@ -1045,6 +1065,7 @@ public class AuthorityConnector extends org.apache.manifoldcf.authorities.author
     tabsArray.add(Messages.getString(locale,"DCTM.Docbase"));
     tabsArray.add(Messages.getString(locale,"DCTM.UserMapping"));
     tabsArray.add(Messages.getString(locale,"DCTM.SystemACLs"));
+    tabsArray.add(Messages.getString(locale,"DCTM.ReviewACLs"));
     tabsArray.add(Messages.getString(locale,"DCTM.Cache"));
 
     out.print(
@@ -1148,6 +1169,10 @@ public class AuthorityConnector extends org.apache.manifoldcf.authorities.author
     String useSystemAcls = parameters.getParameter(CONFIG_PARAM_USESYSTEMACLS);
     if (useSystemAcls == null)
       useSystemAcls = "true";
+    
+    String useReviewAcls = parameters.getParameter(CONFIG_PARAM_USEREVIEWACLS);
+	if (useReviewAcls == null)
+		useReviewAcls = "true";
 
     String cacheLifetime = parameters.getParameter(CONFIG_PARAM_CACHELIFETIME);
     if (cacheLifetime == null)
@@ -1257,6 +1282,38 @@ public class AuthorityConnector extends org.apache.manifoldcf.authorities.author
       );
     }
     
+ // "Review ACLs" tab
+	if (tabName.equals(Messages.getString(locale,"DCTM.ReviewACLs")))
+	{
+		out.print(
+				"<table class=\"displaytable\">\n"+
+						"  <tr><td class=\"separator\" colspan=\"2\"><hr/></td></tr>\n"+
+						"  <tr>\n"+
+						"    <td class=\"description\"><nobr>" + Messages.getBodyString(locale,"DCTM.UseReviewAcls") + "</nobr></td>\n"+
+						"    <td class=\"value\">\n"+
+						"      <table class=\"displaytable\">\n"+
+						"        <tr>\n"+
+						"          <td class=\"description\"><input name=\"usereviewacls\" type=\"radio\" value=\"true\" "+((useReviewAcls.equals("true"))?"checked=\"true\"":"")+" /></td>\n"+
+						"          <td class=\"value\"><nobr>" + Messages.getBodyString(locale,"DCTM.UseReviewAcls") + "</nobr></td>\n"+
+						"        </tr>\n"+
+						"        <tr>\n"+
+						"          <td class=\"description\"><input name=\"usereviewacls\" type=\"radio\" value=\"false\" "+((!useReviewAcls.equals("true"))?"checked=\"true\"":"")+" /></td>\n"+
+						"          <td class=\"value\"><nobr>" + Messages.getBodyString(locale,"DCTM.DontUseReviewAcls") + "</nobr></td>\n"+
+						"        </tr>\n"+
+						"      </table>\n"+
+						"    </td>\n"+
+						"  </tr>\n"+
+						"</table>\n"
+				);
+	}
+	else
+	{
+		// Hiddens for "Review ACLs" tab
+		out.print(
+				"<input type=\"hidden\" name=\"usereviewacls\" value=\""+useReviewAcls+"\"/>\n"
+				);
+	}
+    
     // "Cache" tab
     if(tabName.equals(Messages.getString(locale,"DCTM.Cache")))
     {
@@ -1321,6 +1378,10 @@ public class AuthorityConnector extends org.apache.manifoldcf.authorities.author
     String useSystemAcls = variableContext.getParameter("usesystemacls");
     if (useSystemAcls != null)
       parameters.setParameter(CONFIG_PARAM_USESYSTEMACLS,useSystemAcls);
+    
+    String useReviewAcls = variableContext.getParameter("usereviewacls");
+	if (useReviewAcls != null)
+		parameters.setParameter(CONFIG_PARAM_USEREVIEWACLS,useReviewAcls);
     
     String cacheLifetime = variableContext.getParameter("cachelifetime");
     if (cacheLifetime != null)
@@ -1398,6 +1459,7 @@ public class AuthorityConnector extends org.apache.manifoldcf.authorities.author
     protected String domain;
     protected boolean caseInsensitive;
     protected boolean useSystemACLs;
+    protected boolean useReviewACLs;
     /** The expiration time */
     protected long expirationTime = -1;
     /** The response lifetime */
@@ -1406,7 +1468,7 @@ public class AuthorityConnector extends org.apache.manifoldcf.authorities.author
     /** Constructor. */
     public AuthorizationResponseDescription(String userName, String docbaseName,
       String adminUserName, String adminPassword, String domain,
-      boolean caseInsensitive, boolean useSystemACLs,
+      boolean caseInsensitive, boolean useSystemACLs,boolean useReviewACLs,
       long responseLifetime, int LRUsize)
     {
       super("DocumentumDirectoryAuthority",LRUsize);
@@ -1417,6 +1479,7 @@ public class AuthorityConnector extends org.apache.manifoldcf.authorities.author
       this.domain = domain;
       this.caseInsensitive = caseInsensitive;
       this.useSystemACLs = useSystemACLs;
+      this.useReviewACLs = useReviewACLs;
       this.responseLifetime = responseLifetime;
     }
 
@@ -1428,11 +1491,11 @@ public class AuthorityConnector extends org.apache.manifoldcf.authorities.author
 
     /** Get the critical section name, used for synchronizing the creation of the object */
     public String getCriticalSectionName()
-    {
-      return getClass().getName() + "-" + userName + "-" + docbaseName +
-        "-" + adminUserName + "-" + adminPassword + "-" + ((domain==null)?"NULL":domain) + "-" +
-        (caseInsensitive?"true":"false") + "-" + (useSystemACLs?"true":"false");
-    }
+	{
+		return getClass().getName() + "-" + userName + "-" + docbaseName +
+				"-" + adminUserName + "-" + adminPassword + "-" + ((domain==null)?"NULL":domain) + "-" +
+				(caseInsensitive?"true":"false") + "-" + (useSystemACLs?"true":"false") + "-" + (useReviewACLs?"true":"false");
+	}
 
     /** Return the object expiration interval */
     public long getObjectExpirationTime(long currentTime)
@@ -1443,11 +1506,12 @@ public class AuthorityConnector extends org.apache.manifoldcf.authorities.author
     }
 
     public int hashCode()
-    {
-      return userName.hashCode() + docbaseName.hashCode() + adminUserName.hashCode() +
-        adminPassword.hashCode() + ((domain==null)?0:domain.hashCode()) +
-        (caseInsensitive?1:0) + (useSystemACLs?1:0);
-    }
+	{
+		return userName.hashCode() + docbaseName.hashCode() + adminUserName.hashCode() +
+				adminPassword.hashCode() + ((domain==null)?0:domain.hashCode()) +
+				(caseInsensitive?1:0) + (useSystemACLs?1:0) + (useReviewACLs?1:0);
+	}
+    
     
     public boolean equals(Object o)
     {
@@ -1457,7 +1521,7 @@ public class AuthorityConnector extends org.apache.manifoldcf.authorities.author
       return ard.userName.equals(userName) && ard.docbaseName.equals(docbaseName) &&
         ard.adminUserName.equals(adminUserName) && ard.adminPassword.equals(adminPassword) &&
         ((ard.domain==null||domain==null)?(ard.domain == domain):(ard.domain.equals(domain))) &&
-        ard.caseInsensitive == caseInsensitive && ard.useSystemACLs == useSystemACLs;
+        ard.caseInsensitive == caseInsensitive && ard.useSystemACLs == useSystemACLs && ard.useReviewACLs == useReviewACLs;
     }
     
   }
