@@ -21,7 +21,6 @@ package org.apache.manifoldcf.authorities.authorities.DCTM;
 import org.apache.log4j.*;
 import org.apache.manifoldcf.core.interfaces.*;
 import org.apache.manifoldcf.agents.interfaces.*;
-import org.apache.manifoldcf.authorities.authorities.DCTM.AuthorityConnector.AuthorizationResponseDescription;
 import org.apache.manifoldcf.authorities.interfaces.*;
 import org.apache.manifoldcf.connectorcommon.interfaces.*;
 import org.apache.manifoldcf.authorities.system.Logging;
