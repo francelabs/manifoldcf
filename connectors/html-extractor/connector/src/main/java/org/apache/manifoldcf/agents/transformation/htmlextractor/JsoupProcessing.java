@@ -32,6 +32,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.jsoup.nodes.Document.OutputSettings;
+import org.jsoup.safety.Whitelist;
 
 public class JsoupProcessing {
 
@@ -169,11 +171,13 @@ public class JsoupProcessing {
       }
     }
 
-    if (stripHtml)
-      finalDoc = docToKeep.text();
-    else
-      finalDoc = docToKeep.html();
-    
+    if (stripHtml) {
+      finalDoc = Jsoup.clean(docToKeep.html(),"",Whitelist.none(),new OutputSettings().prettyPrint(false));
+    }
+    else {
+      finalDoc = Jsoup.clean(docToKeep.html(),Whitelist.relaxed());
+    }
+    Logging.connectors.debug("finaldoc: " + finalDoc);
     
     metadata.put("extractedDoc",finalDoc);
 
