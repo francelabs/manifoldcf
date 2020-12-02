@@ -105,7 +105,7 @@ public class SolrIngesterConnector extends BaseRepositoryConnector {
   /**
    * Deny access token for default authority
    */
-  private final static String defaultAuthorityDenyToken = "__nosecurity__";
+  private final static String defaultAuthorityDenyToken = "DEAD_AUTHORITY";
 
   private final static String ACTION_PARAM_NAME = "action";
 
@@ -668,10 +668,8 @@ public class SolrIngesterConnector extends BaseRepositoryConnector {
               is = new ByteArrayInputStream(contentFieldValuesString.getBytes());
 
               // security part
-
-              if (securityActivated = true) {
+              if (securityActivated == true) {
                 
-
                 if (Logging.connectors.isDebugEnabled()) {
                   Logging.connectors.debug("Security part");
                 }
@@ -714,8 +712,6 @@ public class SolrIngesterConnector extends BaseRepositoryConnector {
                   doc.setSecurity(RepositoryDocument.SECURITY_TYPE_DOCUMENT, tabsecurityFieldValues2, new String[] { defaultAuthorityDenyToken });
                   securityFieldValues2 = null;
                   tabsecurityFieldValues2 = null;
-                } else {
-                  doc.setSecurity(RepositoryDocument.SECURITY_TYPE_DOCUMENT, new String[] { "__nosecurity__" }, new String[] { "__nosecurity__" });
                 }
 
               }
