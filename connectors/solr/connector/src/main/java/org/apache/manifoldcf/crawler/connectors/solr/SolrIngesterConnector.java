@@ -102,11 +102,6 @@ public class SolrIngesterConnector extends BaseRepositoryConnector {
 
   public static final String _rcsid = "@(#)$Id: solringesterConnector.java 994959 2010-09-08 10:04:42Z redguy $";
 
-  /**
-   * Deny access token for default authority
-   */
-  private final static String defaultAuthorityDenyToken = "DEAD_AUTHORITY";
-
   private final static String ACTION_PARAM_NAME = "action";
 
   private final static String ACTION_CHECK = "check";
@@ -695,21 +690,21 @@ public class SolrIngesterConnector extends BaseRepositoryConnector {
                   all.clear();
                   all.addAll(hs);
                   securityValues = all.toArray(new String[0]);
-                  doc.setSecurity(RepositoryDocument.SECURITY_TYPE_DOCUMENT, securityValues, new String[] { defaultAuthorityDenyToken });
+                  doc.setSecurity(RepositoryDocument.SECURITY_TYPE_DOCUMENT, securityValues, new String[] { GLOBAL_DENY_TOKEN });
                   securityFieldValues = null;
                   securityFieldValues2 = null;
                 } else if (document.getFieldValues(securityField) != null) {
                   ArrayList<Object> securityFieldValues = null;
                   securityFieldValues = (ArrayList<Object>) document.getFieldValues(securityField);
                   String[] tabsecurityFieldValues = securityFieldValues.toArray(new String[0]);
-                  doc.setSecurity(RepositoryDocument.SECURITY_TYPE_DOCUMENT, tabsecurityFieldValues, new String[] { defaultAuthorityDenyToken });
+                  doc.setSecurity(RepositoryDocument.SECURITY_TYPE_DOCUMENT, tabsecurityFieldValues, new String[] { GLOBAL_DENY_TOKEN });
                   securityFieldValues = null;
                   tabsecurityFieldValues = null;
                 } else if (document.getFieldValues(securityField2) != null) {
                   ArrayList<Object> securityFieldValues2 = null;
                   securityFieldValues2 = (ArrayList<Object>) document.getFieldValues(securityField2);
                   String[] tabsecurityFieldValues2 = securityFieldValues2.toArray(new String[0]);
-                  doc.setSecurity(RepositoryDocument.SECURITY_TYPE_DOCUMENT, tabsecurityFieldValues2, new String[] { defaultAuthorityDenyToken });
+                  doc.setSecurity(RepositoryDocument.SECURITY_TYPE_DOCUMENT, tabsecurityFieldValues2, new String[] { GLOBAL_DENY_TOKEN });
                   securityFieldValues2 = null;
                   tabsecurityFieldValues2 = null;
                 }
