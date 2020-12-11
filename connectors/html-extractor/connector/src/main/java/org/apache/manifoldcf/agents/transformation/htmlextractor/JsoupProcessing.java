@@ -177,8 +177,6 @@ public class JsoupProcessing {
     else {
       finalDoc = Jsoup.clean(docToKeep.html(),Whitelist.relaxed());
     }
-    Logging.connectors.debug("finaldoc: " + finalDoc);
-    
     metadata.put("extractedDoc",finalDoc);
 
     return metadata;
